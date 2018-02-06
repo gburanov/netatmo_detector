@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"golang.org/x/oauth2/clientcredentials"
+	"golang.org/x/oauth2"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 }
 
 func getClient() (*http.Client, error) {
-	c := clientcredentials.Config{}
+	c := oauth2.Config{}
 	c.ClientID = os.Getenv("CLIENT_ID")
 	if c.ClientID == "" {
 		return nil, errors.New("Client id not found")
@@ -41,7 +41,25 @@ func getClient() (*http.Client, error) {
 	if c.ClientSecret == "" {
 		return nil, errors.New("Client secret not found")
 	}
-	c.TokenURL = "https://api.netatmo.com/oauth2/token"
-	client := c.Client(context.Background())
-	return client, nil
+	c.Endpoint = oauth2.Endpoint{
+		AuthURL:  "https://api.netatmo.com/oauth2/token",
+		TokenURL: "https://api.netatmo.com/oauth2/token",
+	}
+	username := os.Getenv("USER_NAME")
+	if username == "" {
+		return nil, errors.New("Username secret not found")
+	}
+	password := os.Getenv("USER_PASSWORD")
+	if password == "" {
+		return nil, errors.New("Password secret not found")
+	}
+	ctx := context.Background()
+	token, err := c.PasswordCredentialsToken(ctx, username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(token.Valid())
+
+	return nil, nil
 }
