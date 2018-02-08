@@ -12,6 +12,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const apiURL = "https://api.netatmo.com"
+const oAuthURL = "https://api.netatmo.com/oauth2/token"
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -33,6 +36,7 @@ func main() {
 
 func getClient() (*http.Client, error) {
 	c := oauth2.Config{}
+	oauth2.RegisterBrokenAuthHeaderProvider(apiURL)
 	c.ClientID = os.Getenv("CLIENT_ID")
 	if c.ClientID == "" {
 		return nil, errors.New("Client id not found")
@@ -42,8 +46,8 @@ func getClient() (*http.Client, error) {
 		return nil, errors.New("Client secret not found")
 	}
 	c.Endpoint = oauth2.Endpoint{
-		AuthURL:  "https://api.netatmo.com/oauth2/token",
-		TokenURL: "https://api.netatmo.com/oauth2/token",
+		AuthURL:  oAuthURL,
+		TokenURL: oAuthURL,
 	}
 	username := os.Getenv("USER_NAME")
 	if username == "" {
@@ -58,8 +62,10 @@ func getClient() (*http.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !token.Valid() {
+		return nil, errors.New("Invalid token")
+	}
+	Client := c.Client(ctx, token)
 
-	fmt.Println(token.Valid())
-
-	return nil, nil
+	return Client, nil
 }
