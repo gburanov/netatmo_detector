@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
+	"github.com/boltdb/bolt"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
@@ -26,12 +28,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	m, err := getMeasurements(client)
+	db, err := bolt.Open("my.db", 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 
-	fmt.Printf("%v\n", m)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go collectMeasurementsPeriodically(client, db, &wg)
+	fmt.Println("Started background routines")
+	wg.Wait()
 }
 
 func getClient() (*http.Client, error) {
