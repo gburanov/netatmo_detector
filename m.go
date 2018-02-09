@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -13,9 +12,15 @@ type measurements map[string]moduleMeasurement
 
 type moduleMeasurement struct {
 	moduleName  string
-	temperature float32
-	co2         float32
+	temperature float64
+	co2         float64
 	timestamp   time.Time
+}
+
+func (m measurements) add(measurement moduleMeasurement) {
+	measurement.timestamp = time.Now()
+	m[measurement.moduleName] = measurement
+	return
 }
 
 func getMeasurements(client *http.Client) (*measurements, error) {
@@ -34,14 +39,44 @@ func getMeasurements(client *http.Client) (*measurements, error) {
 		return nil, err
 	}
 
-	devices, err := jsonParsed.S("body", "devices").ChildrenMap()
+	m := measurements{}
+
+	devices, err := jsonParsed.Search("body", "devices").Children()
 	if err != nil {
 		return nil, err
 	}
 
-	for key, child := range devices {
-		fmt.Printf("key: %v, value: %v\n", key, child.Data().(string))
+	for _, device := range devices {
+		singleMeasurement, err := getMeasurement(device)
+		if err != nil {
+			return nil, err
+		}
+		m.add(singleMeasurement)
+
+		modules, err := device.Search("modules").Children()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, module := range modules {
+			singleMeasurement, err := getMeasurement(module)
+			if err != nil {
+				return nil, err
+			}
+			m.add(singleMeasurement)
+		}
 	}
 
-	return nil, nil
+	return &m, nil
+}
+
+func getMeasurement(c *gabs.Container) (moduleMeasurement, error) {
+	singleMeasurement := moduleMeasurement{}
+	singleMeasurement.moduleName = c.Search("module_name").Data().(string)
+	singleMeasurement.temperature = c.Search("dashboard_data", "Temperature").Data().(float64)
+	co2 := c.Search("dashboard_data", "CO2")
+	if co2.Data() != nil {
+		singleMeasurement.co2 = c.Search("dashboard_data", "CO2").Data().(float64)
+	}
+	return singleMeasurement, nil
 }

@@ -26,12 +26,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	_, err = getMeasurements(client)
+	m, err := getMeasurements(client)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	//fmt.Println()
+	fmt.Printf("%v\n", m)
 }
 
 func getClient() (*http.Client, error) {
