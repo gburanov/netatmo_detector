@@ -12,6 +12,10 @@ import (
 
 func collectMeasurementsPeriodically(client *http.Client, db *bolt.DB, wg *sync.WaitGroup) {
 	defer wg.Done()
+	err := collectMeasurements(client, db)
+	if err != nil {
+		log.Fatal(err)
+	}
 	ticker := time.NewTicker(2 * time.Minute)
 	for _ = range ticker.C {
 		err := collectMeasurements(client, db)
